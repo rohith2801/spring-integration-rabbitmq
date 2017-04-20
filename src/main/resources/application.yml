@@ -1,0 +1,13 @@
+server:
+  port: 8201
+spring:
+  application:
+    name: spring-integration-rabbitmq
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+queue:
+  tihor: tihor.queue

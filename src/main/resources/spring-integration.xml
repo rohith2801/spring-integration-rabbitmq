@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-amqp="http://www.springframework.org/schema/integration/amqp"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/integration/amqp http://www.springframework.org/schema/integration/amqp/spring-integration-amqp.xsd
+http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <int:channel id="failed-channel"/>
+    <int:channel id="output-channel"/>
+    <rabbit:queue name="${queue.tihor}" durable="true" />
+
+    <int:chain input-channel="publish-channel">
+        <int:object-to-json-transformer content-type="text/plain" />
+        <int:header-enricher>
+            <int:header name="headerKey" value="headerValue" />
+        </int:header-enricher>
+        <int-amqp:outbound-channel-adapter
+                id="transactionChannelAdapter"
+                amqp-template="rabbitTemplate"
+                routing-key="${queue.tihor}" />
+    </int:chain>
+
+    <int-amqp:inbound-channel-adapter
+            channel="inbound-channel"
+            queue-names="${queue.tihor}"
+            concurrent-consumers="5"
+            connection-factory="rabbitConnectionFactory"
+            error-channel="failed-channel"
+            mapped-request-headers="*" />
+
+    <int:chain input-channel="inbound-channel" output-channel="output-channel">
+        <int:json-to-object-transformer type="com.tihor.spring.rabbit.model.UserRequest" />
+    </int:chain>
+
+    <rabbit:connection-factory
+            id="rabbitConnectionFactory"
+            connection-factory="rcf"
+            host="${spring.rabbitmq.host}"
+            port="${spring.rabbitmq.port}"
+            username="${spring.rabbitmq.username}"
+            password="${spring.rabbitmq.password}" />
+
+    <bean id="rcf" class="com.rabbitmq.client.ConnectionFactory">
+        <property name="host" value="${spring.rabbitmq.host}"/>
+        <property name="requestedHeartbeat" value="10" />
+    </bean>
+</beans>
